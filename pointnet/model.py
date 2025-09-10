@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable   def forward(self, x):                                                      
+from torch.autograd import Variable
 
 class STNKd(nn.Module):
     # T-Net a.k.a. Spatial Transformer Network
@@ -65,20 +65,20 @@ class PointNetFeat(nn.Module):
             self.stn3 = STNKd(k=3)
         if self.feature_transform:
             self.stn64 = STNKd(k=64)
-        self.linear_transform1 = nn.Sequential(nn.Conv1d(3, 64),
+        self.linear_transform1 = nn.Sequential(nn.Conv1d(3, 64, 1),
                                                nn.BatchNorm1d(64),
                                                nn.ReLU(64),
-                                               nn.Linear(64, 64),
+                                               nn.Conv1d(64, 64, 1),
                                                nn.BatchNorm1d(64),
                                                nn.ReLU(),
                                               )
-        self.linear_transform2 = nn.Sequential(nn.Linear(64, 64),
+        self.linear_transform2 = nn.Sequential(nn.Conv1d(64, 64, 1),
                                                nn.BatchNorm1d(64),
                                                nn.ReLU(),
-                                               nn.Linear(64, 128),
+                                               nn.Conv1d(64, 128, 1),
                                                nn.BatchNorm1d(128),
                                                nn.ReLU(),
-                                               nn.Linear(128, 1024),
+                                               nn.Conv1d(128, 1024, 1),
                                                nn.BatchNorm1d(1024),
                                                nn.ReLU()
                                                )
@@ -119,8 +119,8 @@ class PointNetCls(nn.Module):
                 nn.Linear(512, 256),
                 nn.BatchNorm1d(256),
                 nn.ReLU(),
-                nn.Linear(256, k),
-                nn.BatchNorm1d(k),
+                nn.Linear(256, num_classes),
+                nn.BatchNorm1d(num_classes),
                 nn.ReLU()
                 )
         
@@ -147,10 +147,10 @@ class PointNetPartSeg(nn.Module):
         self.pointnet_features = PointNetFeat(input_transform = True,
                                               feature_transform = True)
         self.linear_transformation1 = nn.Sequential(
-                nn.Conv1d(1088, 512),
+                nn.Conv1d(1088, 512, 1),
                 nn.BatchNorm1d(512),
                 nn.ReLU(),
-                nn.Conv1d(512, 256),
+                nn.Conv1d(512, 256, 1),
                 nn.ReLU(),
                 nn.BatchNorm1d(256),
                 nn.ReLU(),
