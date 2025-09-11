@@ -156,7 +156,7 @@ class PointNetPartSeg(nn.Module):
                 nn.ReLU(),
                 nn.BatchNorm1d(256),
                 nn.ReLU(),
-                nn.Conv1d(256, m),
+                nn.Conv1d(256, m, 1),
                 nn.BatchNorm1d(m),
                 nn.ReLU()
                 )
@@ -172,8 +172,11 @@ class PointNetPartSeg(nn.Module):
         """
         B, N, _ = pointcloud.shape
         global_features, local_features = self.pointnet_features(pointcloud) # (B, 1024), (B, N,  64)
-        global_features_expanded = global_features_expanded.repeat(1, 1, N) # (B, 1024, N)
-        concat_features = torch.concatenate([global_features_expanded, local_features.permute(0,2,1)], dim=1)
+        # global_features_expanded = global_features.repeat(1, 1, N) # (B, 1024, N)
+        global_features = global_features.unsqueeze(1) # (B, 1, 1024)
+        global_features_expanded = global_features.repeat(1, N, 1)
+        concat_features = torch.concatenate([global_features_expanded, local_features], dim=2)
+        concat_features = concat_features.permute(0, 2, 1)
         segmentation = self.linear_transformation1(concat_features) # (B, M, N)
         return segmentation # (B, 50, N)
 
@@ -195,7 +198,7 @@ class PointNetAutoEncoder(nn.Module):
                 )
         self.layer3 = nn.Sequential(
                 nn.Linear(num_points // 2, num_points),
-                nn.Dropout1d(num_points),
+                nn.Dropout1d(p=0.3),
                 nn.BatchNorm1d(num_points),
                 nn.ReLU()
                 )
