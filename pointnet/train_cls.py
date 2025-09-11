@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import argparse
 from datetime import datetime
 from tqdm import tqdm
@@ -19,24 +20,27 @@ def step(points, labels, model):
         - preds [B]
     """
     
-    preds = model(points)
+    preds = model(points.to(device))
     loss_fn = nn.CrossEntropyLoss()
-    loss = loss(preds, labels)
+    loss = loss_fn(preds, labels.to(device))
     return loss, preds
 
 
 def train_step(points, labels, model, optimizer, train_acc_metric):
     loss, preds = step(points, labels, model)
-    train_batch_acc = train_acc_metric(preds, labels.to(device))
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+
+    pred_labels = torch.argmax(preds, dim=1)
+    train_batch_acc = train_acc_metric(pred_labels, labels.to(device))
     return loss, train_batch_acc
 
 
 def validation_step(points, labels, model, val_acc_metric):
     loss, preds = step(points, labels, model)
-    val_batch_acc = val_acc_metric(preds, labels)
+    pred_labels = torch.argmax(preds, dim=1)
+    val_batch_acc = val_acc_metric(pred_labels, labels)
 
     return loss, val_batch_acc
 

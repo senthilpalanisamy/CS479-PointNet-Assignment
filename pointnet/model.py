@@ -96,10 +96,12 @@ class PointNetFeat(nn.Module):
             - local feature: [B, N, 64]
         """                                                                    
         point_transformation = self.stn3(pointcloud.permute(0,2,1))
-        x = torch.matmul(pointcloud, point_transformation.T)
+        point_transformation = point_transformation.transpose(1, 2)
+        x = torch.bmm(pointcloud, point_transformation)
         local_features = self.linear_transform1(x.permute(0,2,1)) # x -> (B, 64, n)
-        feature_transformation = self.stn64(x)
-        local_features_aligned = torch.matmul(local_features.permute(0,2,1), feature_transform.T) # x -> (B, n, 64)
+        feature_transformation = self.stn64(local_features)
+        feature_transformation = feature_transformation.transpose(1, 2)
+        local_features_aligned = torch.bmm(local_features.permute(0,2,1), feature_transformation) # x -> (B, n, 64)
         x = self.linear_transform2(local_features_aligned.permute(0,2,1)) # x -> (B, 1024, n)
         global_feature = torch.max(x, dim=2)[0] # x -> (B, 1024)
         return global_feature, local_features_aligned
@@ -136,9 +138,9 @@ class PointNetCls(nn.Module):
             - ...
         """
         # TODO : Implement forward function.
-        self.features, _  = self.pointnet_feat(pointcloud) # (B, 1024)
-        self.class_scores = self.class_scores(self.features) # (B, k)
-        return self.class_scores
+        features, _  = self.pointnet_feat(pointcloud) # (B, 1024)
+        class_scores = self.class_scores(features) # (B, k)
+        return class_scores
 
 
 class PointNetPartSeg(nn.Module):
