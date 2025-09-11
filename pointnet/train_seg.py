@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import argparse
 from datetime import datetime
 from tqdm import tqdm
@@ -26,9 +27,10 @@ def step(points, pc_labels, class_labels, model):
     
     # TODO : Implement step function for segmentation.
 
-    loss = None
-    logits = None
-    preds = None
+    loss_fn = nn.CrossEntropyLoss()
+    logits = model(points.to(device))
+    preds = torch.argmax(logits, dim=1)
+    loss = loss_fn(logits, pc_labels.to(device))
     return loss, logits, preds
 
 
@@ -38,7 +40,10 @@ def train_step(points, pc_labels, class_labels, model, optimizer, train_acc_metr
     )
     train_batch_acc = train_acc_metric(preds, pc_labels.to(device))
 
-    # TODO : Implement backpropagation using optimizer and loss
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
 
     return loss, train_batch_acc
 
@@ -83,6 +88,7 @@ def main(args):
     train_acc_metric = Accuracy()
     val_acc_metric = Accuracy()
     val_iou_metric = mIoU()
+    best_val_accuracy = 0.0
 
     for epoch in range(args.epochs):
         # training step
