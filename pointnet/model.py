@@ -95,16 +95,21 @@ class PointNetFeat(nn.Module):
             - Global feature: [B,1024]
             - local feature: [B, N, 64]
         """                                                                    
-        point_transformation = self.stn3(pointcloud.permute(0,2,1))
-        point_transformation = point_transformation.transpose(1, 2)
-        x = torch.bmm(pointcloud, point_transformation)
-        local_features = self.linear_transform1(x.permute(0,2,1)) # x -> (B, 64, n)
-        feature_transformation = self.stn64(local_features)
-        feature_transformation = feature_transformation.transpose(1, 2)
-        local_features_aligned = torch.bmm(local_features.permute(0,2,1), feature_transformation) # x -> (B, n, 64)
-        x = self.linear_transform2(local_features_aligned.permute(0,2,1)) # x -> (B, 1024, n)
+        if self.input_transform:
+            point_transformation = self.stn3(pointcloud.permute(0,2,1))
+            point_transformation = point_transformation.transpose(1, 2)
+            pointcloud = torch.bmm(pointcloud, point_transformation)
+        local_features = self.linear_transform1(pointcloud.permute(0,2,1)) # x -> (B, 64, n)
+        
+        if self.feature_transform:
+            feature_transformation = self.stn64(local_features)
+            feature_transformation = feature_transformation.transpose(1, 2)
+            local_features = torch.bmm(local_features.permute(0,2,1), feature_transformation) # x -> (B, n, 64)
+            local_features = local_feautres.permute(0, 2, 1) # local_feature -> (B, 64, n)
+            
+        x = self.linear_transform2(local_features) # x -> (B, 1024, n)
         global_feature = torch.max(x, dim=2)[0] # x -> (B, 1024)
-        return global_feature, local_features_aligned
+        return global_feature, local_features
 
 
 class PointNetCls(nn.Module):
@@ -185,6 +190,7 @@ class PointNetPartSeg(nn.Module):
 class PointNetAutoEncoder(nn.Module):
     def __init__(self, num_points):
         super().__init__()
+        self.num_points = num_points
         self.pointnet_feat = PointNetFeat()
         self.layer1 = nn.Sequential(
                 nn.Linear(1024, num_points // 4),
@@ -215,11 +221,11 @@ class PointNetAutoEncoder(nn.Module):
             - pointcloud [B,N,3]
             - ...
         """
-        self.global_features, _ = self.pointnet_feat(pointcloud) # (B, 1024)
-        x = self.layer1(self.global_features) # (B, n / 2)
-        x = self.layer2(x)
+        global_features, _ = self.pointnet_feat(pointcloud) # (B, 1024)
+        x = self.layer1(global_features) # (B, n / 2)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.fc(x)
         return x.reshape(-1, self.num_points, 3)
 
 

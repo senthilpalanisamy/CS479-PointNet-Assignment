@@ -25,8 +25,8 @@ def step(points, model):
     # Hint : You can compute chamfer distance between two point cloud pc1 and pc2 by chamfer_distance(pc1, pc2)
     
     preds = model(points.to(device))
-    loss_fn = chamfer_distance()
-    loss = loss_fn(points, preds)
+    loss_fn = chamfer_distance
+    loss, _ = loss_fn(points, preds)
 
     return loss, preds
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-3)
 
     args = parser.parse_args()
-    args.gpu = 0
+    args.gpu = -1
     args.save = True
 
     main(args)
